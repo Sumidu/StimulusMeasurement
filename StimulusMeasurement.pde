@@ -1,5 +1,6 @@
 import java.util.*;
 
+
 Vector<PImage> images;
 Vector<Integer> ratings;
 Vector<Long> timings;
@@ -21,8 +22,11 @@ int state = 0;
 
 
 float finished = 0;
-int studyLength = 5;
+int studyLength = 100;
 Long starttime;
+float breaktime = 5;
+
+
 
 
 /**
@@ -42,51 +46,13 @@ void loadStimuli(int n) {
   }
 }
 
-void centerImage(PImage img) {
-  image(img, width/2 - img.width/2, height/2- img.height/2);
-}
-
-/**
- Method for drawing a single stimlus on screen centered
- */
-void drawStimulus(int n) {
-  background(255);
-  if (n>=images.size()|| n<0) { 
-    n=0;
-  }
-
-  PImage img = images.get(n);
-  //place stimulus in upper third
-  image(img, width/2-img.width/2 - 30, height*1/2-img.height/2 - 50);
-
-  image( instructions, width/2-instructions.width/2, height/2+img.height/2-50);
-  
-  fill(255);
-  rect(width/2-100, 5, 200, 20);
-  fill(125);
-  rect(width/2-100, 5, ((float)trial/studyLength)*200.0, 20);
-  
-  drawCommands();
-}
-
-void drawInstructions() {
-  background(255);
-  PImage inst = loadImage("data/inst1.png");
-  centerImage(inst);
-}
-
-void drawInstructions2() {
-  background(255);
-  PImage inst = loadImage("data/inst2.png");
-  centerImage(inst);
+// helper method for threading
+void loadData() {
+  loadStimuli(studyLength);
+  dataLoaded();
 }
 
 
-
-/**
- */
-void drawCommands() {
-}
 
 
 
@@ -97,6 +63,7 @@ void drawCommands() {
 void setup() {
   //size(900, 900);
   pixelDensity(displayDensity());
+ 
   fullScreen();
   surface.setResizable(true);
   startState();
@@ -105,16 +72,10 @@ void setup() {
 }
 
 
-void drawStudyOver() {
-  background(0);
-  fill(255);
-  text("The end. Press ESC to quit.", width/2, height/2);
-}
 
 /*
   state-dependent DrawMethod
  */
-
 void draw() {
   switch(state) {
   case -1:
@@ -124,13 +85,16 @@ void draw() {
     drawLoad();
     break;
   case 1:  
-    drawInstructions(); 
+    drawInstructions(1); 
     break;
   case 2:  
-    drawInstructions2(); 
+    drawInstructions(2); 
     break;  
   case 5:  
     drawStimulus(trial); 
+    break;
+  case 10:
+    drawbreak();
     break;
   default:
     drawStimulus(trial);
@@ -141,6 +105,23 @@ void draw() {
     text("trial:"+trial+" state:"+state+ " ", width/2, height-20);
   }
 }
+
+
+void drawbreak(){
+  background(200);
+  fill(20);
+  textAlign(CENTER);
+  text("Short break... please wait.", width/2, height/2);
+  fill(255);
+  rect(width/2-100, height/2 +20, 200, 20);
+  fill(20);
+  rect(width/2-100, height/2 +20, breaktime*40, 20);
+  breaktime-=1/frameRate;
+  if(breaktime<0){
+    state=5;
+  }
+}
+
 
 /*
   Ladebildschirm zeichnen
@@ -156,10 +137,62 @@ void drawLoad() {
   rect(width/2-100, height/2 +20, finished*200, 20);
 }
 
-void loadData() {
-  loadStimuli(studyLength);
-  dataLoaded();
+
+void drawStudyOver() {
+  background(0);
+  fill(255);
+  text("The end. Press ESC to quit.", width/2, height/2);
 }
+
+
+
+void resetBreakTime(){
+  breaktime = 5;
+}
+
+
+/**
+ ****************+
+ Main method for drawing a single stimlus on screen centered
+ */
+void drawStimulus(int n) {
+  if((breaktime > 0) & (n%10==0) ){
+    state = 10;
+  }
+  if (n%10==1){
+    resetBreakTime();
+  }
+  
+  background(255);
+  if (n>=images.size()|| n<0) { 
+    n=0;
+  }
+
+  PImage img = images.get(n);
+  //place stimulus in upper third
+  image(img, width/2-img.width/2 - 30, height*1/2-img.height/2 - 50);
+
+  //place instructions
+  image( instructions, width/2-instructions.width/2, height/2+img.height/2-50);
+  fill(255);
+  rect(width/2-100, 5, 200, 20);
+  fill(125);
+  rect(width/2-100, 5, ((float)trial/studyLength)*200.0, 20);
+}
+
+
+
+
+/*
+  Draws *screen* instruction screen
+ */
+void drawInstructions(int screen) {
+  background(255);
+  PImage inst = loadImage("data/inst"+screen+".png");
+  centerImage(inst);
+}
+
+
 
 
 /*
@@ -192,10 +225,11 @@ void keyPressedStudy() {
 
   if (keyCode == 27) endStudy();
   if (keyCode >48 && keyCode <55) {
-    Long now = System.currentTimeMillis() - starttime;
+    Long now = System.nanoTime() - starttime;
     // get rating from Keycode 49 = 1, 50=2
     ratings.add(keyCode -48);
     timings.add(now);
+    starttime = System.nanoTime();
     trial++;
   }
   if (trial > studyLength-1) {
@@ -220,39 +254,7 @@ void dataLoaded() {
 
 void startStudy() {
   if (keyCode==53) {
-    starttime = System.currentTimeMillis();
+    starttime = System.nanoTime();
     state = 5;
   }
-}
-
-void fileSelected(File selection) {
-  if (selection == null) {
-    selectOutput("Select a file to write to:", "fileSelected", f);
-  } else {
-    filename = selection.getAbsolutePath();
-  }
-}
-
-void endStudy() {
-
-
-  filename = fullPath;
-  selectOutput("Select a file to write to:", "fileSelected", f);
-
-  Table table = new Table();
-  table.addColumn("id");
-  table.addColumn("user-id");
-  table.addColumn("rating");
-  table.addColumn("timing");
-  for (int i=0; i < ratings.size(); i ++) {
-    TableRow newRow = table.addRow();
-    newRow.setInt("id", table.getRowCount() - 1);
-    newRow.setString("user-id", user);
-    newRow.setInt("rating", ratings.get(i));
-    newRow.setLong("timing", timings.get(i));
-  }
-  saveTable(table, filename);
-  println("Saved to:" + filename);
-
-  state = -1;
 }
