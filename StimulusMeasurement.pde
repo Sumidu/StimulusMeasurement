@@ -8,7 +8,7 @@ Vector<Long> timings;
 String filename;
 String user="UID"+System.currentTimeMillis();
 String homeFolder = System.getProperty("user.home");
-String fullPath = homeFolder + "/Documents/studydata"+user+".csv";
+String fullPath = homeFolder + "/documents/studydata"+user+".csv";
 File f = new File(fullPath);
 
 PImage instructions;
@@ -22,7 +22,7 @@ int state = 0;
 
 
 float finished = 0;
-int studyLength = 100;
+int studyLength = 250;
 Long starttime;
 float breaktime = 5;
 
@@ -188,7 +188,7 @@ void drawStimulus(int n) {
  */
 void drawInstructions(int screen) {
   background(255);
-  PImage inst = loadImage("data/inst"+screen+".png");
+  PImage inst = loadImage("data/instprod"+screen+".png");
   centerImage(inst);
 }
 
